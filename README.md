@@ -33,18 +33,27 @@ Este proyecto combina **dos herramientas** para cubrir distintos aspectos del co
 
 | Archivo | Tests | Tags |
 |---|---|---|
-| `api-tests/01-auth.spec.ts` | 8 | `@smoke`, `@regression` |
-| `api-tests/02-products.spec.ts` | 9 | `@smoke`, `@regression` |
-| `api-tests/03-orders.spec.ts` | 6 | `@smoke`, `@regression` |
-| **Total** | **23** | |
+| `api-tests/01-auth.spec.ts` | 11 | `@smoke`, `@regression` |
+| `api-tests/02-products.spec.ts` | 14 | `@smoke`, `@regression` |
+| `api-tests/03-orders.spec.ts` | 8 | `@smoke`, `@regression` |
+| `api-tests/04-security.spec.ts` | 8 | `@smoke`, `@regression` |
+| **Total** | **41** | |
 
 **Casos clave:**
 - JWT válido: 3 partes separadas por `.`
-- Password no expuesto en ninguna respuesta
+- Password no expuesto en ninguna respuesta ni en texto de error
 - Regla de negocio: `originalPrice >= price` en todos los productos con descuento
-- Tiempo de respuesta `GET /products` < 1000ms
-- Rutas protegidas devuelven `401` sin token y con token inválido
-- Schema de producto: `id`, `name`, `price`, `description`, `inStock`
+- Ningún producto con precio negativo o cero
+- Paginación: pageSize respetado, página 2 sin duplicados de página 1
+- Búsqueda sin resultados devuelve array vacío (no 404)
+- Rutas protegidas devuelven `401` sin token, con token inválido y sin prefijo Bearer
+- Aislamiento de usuarios: un usuario no ve las órdenes de otro
+- Status de órdenes: solo valores válidos del enum
+- SQL injection en search y login no causa error 500
+- User enumeration: error 401 genérico sin revelar si el email existe
+- Rate limit: 10 logins fallidos seguidos no causan 500
+- Header `X-Powered-By` no expone tecnología al atacante
+- Usuario CUSTOMER no puede crear/editar/borrar productos
 
 ### Postman Collection (Newman)
 
