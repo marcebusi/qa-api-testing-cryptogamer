@@ -1,0 +1,11 @@
+{
+  "id": "cryptogamer-local",
+  "name": "Cryptogamer Local",
+  "values": [
+    { "key": "baseUrl",          "value": "http://localhost:3001", "enabled": true },
+    { "key": "testUserEmail",    "value": "testuser@cryptogamer.test", "enabled": true },
+    { "key": "testUserPassword", "value": "TestPass123!", "enabled": true },
+    { "key": "token",            "value": "", "enabled": true },
+    { "key": "createdProductId", "value": "", "enabled": true }
+  ]
+}

@@ -1,0 +1,127 @@
+name: API Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  playwright-api:
+    name: Playwright API Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            ../cryptogamer-ecommerce/package-lock.json
+
+      - name: Install API test dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Clone and setup backend
+        run: |
+          git clone https://github.com/marcebusi/cryptogamer-ecommerce.git app
+          cd app/backend
+          npm ci
+          cp .env.example .env || true
+
+      - name: Start backend
+        run: |
+          cd app/backend
+          npx prisma migrate deploy --schema=./prisma/schema.prisma || true
+          npx prisma db seed || true
+          npm start &
+          sleep 5
+        env:
+          NODE_ENV: test
+          PORT: 3001
+
+      - name: Run smoke tests
+        run: npm run test:smoke
+        env:
+          API_URL: http://localhost:3001
+          TEST_USER_EMAIL: testuser@cryptogamer.test
+          TEST_USER_PASSWORD: TestPass123!
+
+      - name: Run regression tests
+        if: github.event_name == 'push'
+        run: npm run test:regression
+        env:
+          API_URL: http://localhost:3001
+          TEST_USER_EMAIL: testuser@cryptogamer.test
+          TEST_USER_PASSWORD: TestPass123!
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-api-report
+          path: playwright-report/
+          retention-days: 30
+
+  newman:
+    name: Newman (Postman Collection)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Newman
+        run: npm install -g newman newman-reporter-htmlextra
+
+      - name: Clone and setup backend
+        run: |
+          git clone https://github.com/marcebusi/cryptogamer-ecommerce.git app
+          cd app/backend
+          npm ci
+          cp .env.example .env || true
+
+      - name: Start backend
+        run: |
+          cd app/backend
+          npx prisma migrate deploy --schema=./prisma/schema.prisma || true
+          npx prisma db seed || true
+          npm start &
+          sleep 5
+        env:
+          NODE_ENV: test
+          PORT: 3001
+
+      - name: Register test user
+        run: |
+          curl -s -X POST http://localhost:3001/api/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Test User","email":"testuser@cryptogamer.test","password":"TestPass123!"}' || true
+
+      - name: Run Newman collection
+        run: |
+          newman run postman/cryptogamer-api.collection.json \
+            -e postman/environment.json \
+            --env-var "testUserEmail=testuser@cryptogamer.test" \
+            --env-var "testUserPassword=TestPass123!" \
+            -r cli,htmlextra \
+            --reporter-htmlextra-export newman-report/index.html
+
+      - name: Upload Newman report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: newman-report
+          path: newman-report/
+          retention-days: 30
